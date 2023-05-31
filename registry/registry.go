@@ -26,6 +26,8 @@ const (
 	FetchModuleFileName = "fetch_module_filename"
 	// UseProtoNames will make the generator to generate field name the same as defined in the proto
 	UseProtoNames = "use_proto_names"
+	// ExplicitCamelCaseMapping is the parameter for explicit camel case mapping
+	ExplicitCamelCaseMapping = "explicit_camel_case_mapping"
 )
 
 // Registry analyse generation request, spits out the data the the rendering process
@@ -57,6 +59,8 @@ type Registry struct {
 
 	// TSPackages stores the package name keyed by the TS file name
 	TSPackages map[string]string
+
+	ExplicitCamelCaseMapping map[string]string
 }
 
 // NewRegistry initialise the registry and return the instance
@@ -83,14 +87,22 @@ func NewRegistry(paramsMap map[string]string) (*Registry, error) {
 		useProtoNames = useProtoNamesVal == "true"
 	}
 
+	explicitCamelCaseMapping, err := getExplicitCamelCaseMapping(paramsMap)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting explicit camel case mapping")
+	}
+	log.Debugf("found explicit camel case mapping %s", explicitCamelCaseMapping)
+
 	r := &Registry{
-		Types:                make(map[string]*TypeInformation),
-		TSImportRoots:        tsImportRoots,
-		TSImportRootAliases:  tsImportRootAliases,
-		FetchModuleDirectory: fetchModuleDirectory,
-		FetchModuleFilename:  fetchModuleFilename,
-		UseProtoNames:        useProtoNames,
-		TSPackages:           make(map[string]string),
+		Types:                    make(map[string]*TypeInformation),
+		TSImportRoots:            tsImportRoots,
+		TSImportRootAliases:      tsImportRootAliases,
+		FetchModuleDirectory:     fetchModuleDirectory,
+		FetchModuleFilename:      fetchModuleFilename,
+		UseProtoNames:            useProtoNames,
+		TSPackages:               make(map[string]string),
+		ExplicitCamelCaseMapping: explicitCamelCaseMapping,
 	}
 
 	return r, nil
@@ -109,6 +121,27 @@ func getFetchModuleDirectory(paramsMap map[string]string) (fetchModuleDirectory 
 	}
 
 	return fetchModuleDirectory, fetchModuleFile, nil
+}
+
+func getExplicitCamelCaseMapping(paramsMap map[string]string) (map[string]string, error) {
+	explicitCamelCaseMapping, ok := paramsMap[ExplicitCamelCaseMapping]
+
+	if !ok {
+		return nil, nil
+	}
+
+	mapping := make(map[string]string)
+
+	for _, mappingPair := range strings.Split(explicitCamelCaseMapping, ";") {
+		pair := strings.Split(mappingPair, "-")
+		if len(pair) != 2 {
+			return nil, errors.Errorf("invalid explicit camel case mapping %s", mappingPair)
+		}
+
+		mapping[pair[0]] = pair[1]
+	}
+
+	return mapping, nil
 }
 
 func getTSImportRootInformation(paramsMap map[string]string) ([]string, []string, error) {

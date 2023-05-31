@@ -456,6 +456,11 @@ func GetTemplate(r *registry.Registry) *template.Template {
 
 func fieldName(r *registry.Registry) func(name string) string {
 	return func(name string) string {
+		// if explicit mapping exists, use it
+		val, ok := r.ExplicitCamelCaseMapping[name]
+		if ok {
+			return val
+		}
 		if r.UseProtoNames {
 			return name
 		}
